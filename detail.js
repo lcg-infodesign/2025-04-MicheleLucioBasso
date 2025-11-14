@@ -58,7 +58,7 @@ function draw() {
     rectMode(CENTER);
     noStroke();
     fill("#4b2a1cff");
-    rect(windowWidth / 2 + 400, windowHeight / 2, 300, 250, 10);
+    rect(windowWidth / 2 + 450, windowHeight / 2, 300, 250, 10);
 
     pop();
 
@@ -68,7 +68,7 @@ function draw() {
     textAlign(CENTER);
     textStyle(BOLD);
     textSize(20);
-    text("name da cambiare", windowWidth / 2 + 350, windowHeight / 2 - 100);
+    text("name da cambiare", windowWidth / 2 + 400, windowHeight / 2 - 100);
 
     pop();
 
