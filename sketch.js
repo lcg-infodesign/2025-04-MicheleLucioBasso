@@ -137,7 +137,7 @@ function draw() {
 
     //colore in base a legenda attiva
     if (activeLegend === 'Elevation') { //se attiva legenda Elevation, usa logica Elevation
-        //mappatura colori, basata su altitudine (vd. lgenda)
+        //mappatura colori, basata su altitudine (vd. legenda)
         if (elevation >= 0) { //vulcani con altezza positiva (sfumatura da rosso chiaro a rosso scuro)
 
           const lightRed = color("#ff9b7cff");
@@ -155,7 +155,7 @@ function draw() {
         }
     } else if (activeLegend === 'Type category') { //se attiva legenda Type Category, usa colore mappato
         
-        //colora in basea type cateogru
+        //colora in base a type category
         volcanoColor = categoryColors[typeCategory] ? color(categoryColors[typeCategory]) : color(255, 255, 255, 150); 
 
     }
