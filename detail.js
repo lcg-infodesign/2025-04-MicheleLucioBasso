@@ -15,21 +15,74 @@ function preload() {
   );
 }
 
+//x recuperare parametri da URL
+function getURLParams() { //restituisce tutti paramtetri dopo "?" in URL pagina
+    const params = {};
+    const url = window.location.href;
+    const parts = url.split('?'); //divide URL in 2 parti, divise da ?, parts[0] contiene l'URL base, parts[1] contiene stringa di query completa, che è lista di parametri e valori
+    if (parts.length > 1) {
+        const query = parts[1];
+        const vars = query.split('&'); //split('&') ottiene singoli parametri es.["volcano=Vesuvio", "id=123", "active=true"]
+        for (let i = 0; i < vars.length; i++) {
+            const pair = vars[i].split('='); //split('=') (e ciclo) es."volcano=Vesuvio" diventa params.volcano = "Vesuvio", "id=123" diventa params.id = "123","active=true" diventa params.active = "true"
+            params[pair[0]] = pair[1];
+        }
+    }
+    return params;
+}
+
 function setup() {
   createCanvas(windowWidth, windowHeight);
 
   //recupera dati vulcano da URL
   let parameters = getURLParams();
 
-  if (parameters.volcano) {
+  if (parameters.volcano && parameters.lat && parameters.lon) {
     let volcanoName = decodeURIComponent(parameters.volcano); //trova riga vulcano usando nome vulcano
-    //nome colonna nella tabella è "Volcano Name"
-    let foundRows = table.findRows(volcanoName, "Volcano Name");
+    let targetLatitude = parameters.lat;
+    let targetLongitude = parameters.lon;
+    let foundRows = table.findRows(volcanoName, "Volcano Name"); //nome colonna nella tabella è "Volcano Name"
 
-    if (foundRows.length > 0) {
-      selectedVolcano = foundRows[0];
-      volcanoElevation = parseFloat(selectedVolcano.getString("Elevation (m)")); //estrae Elevation e la converte in numero
+    let targetRow = null;
+
+    //itera su risultati x trovare riga che corrisponde a coordinate
+    for (let i = 0; i < foundRows.length; i++) {
+      let row = foundRows[i];
+
+      if ( //confronta latitudine e longitudine come stringhe x garantire precisione
+        row.getString("Latitude") === targetLatitude &&
+        row.getString("Longitude") === targetLongitude
+      ) {
+        targetRow = row;
+        break; //trovato vulcano univoco, interrompe ciclo
+      }
     }
+
+    if (targetRow) {
+      selectedVolcano = targetRow;
+      //estrae valore Elevation e lo converte in numero
+      let rawElevation = selectedVolcano.getString("Elevation (m)");
+      let parsedElevation = parseFloat(rawElevation);
+
+      if (!isNaN(parsedElevation)) { //aggiorna elevazione
+          volcanoElevation = parsedElevation;
+      } else {
+          volcanoElevation = 0; 
+      }
+      
+      elevation = volcanoElevation; 
+    } else {
+        //se non viene trovata 1 riga univoca (vulcani Unnamed hanno tutti stesso nome)
+        selectedVolcano = null;
+        volcanoElevation = 0;
+        elevation = 0;
+        console.warn("Nessun vulcano trovato con i parametri completi (Nome, Latitudine, Longitudine).");
+    }
+  } else {
+    //se parametri non sono presenti nell'URL
+    selectedVolcano = null;
+    volcanoElevation = 0;
+    elevation = 0;
   }
 }
 
@@ -291,96 +344,6 @@ function draw() {
 
   pop();
 
-  push(); //last known eruption
-
-  fill("#ffffffff");
-  noStroke();
-  textAlign(CENTER);
-  textStyle(BOLD);
-  textSize(20);
-  text("Last known eruption", windowWidth / 2 - 320, windowHeight / 2 + 280);
-
-  pop();
-
-  //linea temporale
-  let showUnknown = false;
-  let eruptionX = null;
-
-  if (lastEruptionCode) {
-    if (lastEruptionCode === "U") {
-      showUnknown = true;
-    } else if (lastEruptionCode.startsWith("D")) {
-      //mappa valori tabella di dati sotto colonna last known eruption (D1-D7) a coordinata X linea temporale
-      const segment = parseInt(lastEruptionCode.substring(1));
-      //coordinate X fisse sono: -200, -100, 0, 100, 200, 300, 400 (relative a windowWidth/2)
-      //D7 (-200), D6 (-100), D5 (0), D4 (100), D3 (200), D2 (300), D1 (400)
-
-      //ordine corretto è D7 (più vecchio) a D1 (più recente, 1964-2025)
-      //etichetta D4 (1964 - 2025) è a +400.
-      //coordinate usate x linee verticali sono:
-      // -200 (D7) , -100 (D6) , 0 (D5) , 100 (D4) , 200 (D3) , 300 (D2) , 400 (D1)
-
-      let xOffset = 0;
-      switch (segment) {
-        case 7:
-          xOffset = -200;
-          break;
-        case 6:
-          xOffset = -100;
-          break;
-        case 5:
-          xOffset = 0;
-          break;
-        case 4:
-          xOffset = 100;
-          break; //D4 è a 100
-        case 3:
-          xOffset = 200;
-          break;
-        case 2:
-          xOffset = 300;
-          break;
-        case 1:
-          xOffset = 400;
-          break; //D1 non è presente nelle etichette ma assumo sia a +400 (l'ultima etichetta è D4 (1964-2025))
-        default:
-          xOffset = null;
-      }
-
-      if (xOffset !== null) {
-        eruptionX = windowWidth / 2 + xOffset;
-      }
-    }
-  }
-
-  //linea verticale gialla
-  if (eruptionX !== null) {
-    push();
-
-    stroke("#fffb00ff");
-    strokeWeight(5);
-    // Linea verticale: Y alta (265) a Y bassa (285)
-    line(eruptionX, windowHeight / 2 + 285, eruptionX, windowHeight / 2 + 265);
-
-    pop();
-  }
-
-  //disegna "Unknown" se è valore vulcano scelto
-  if (showUnknown) {
-    push(); //unknown
-
-    fill("#fffb00ff");
-    noStroke();
-    textAlign(CENTER);
-    textStyle(BOLD);
-    textSize(14);
-    text("Unknown", windowWidth / 2 - 320, windowHeight / 2 + 310);
-    pop();
-  }
-  //altrimenti (se è data nota D1-D7), "Unknown" non compare
-  else {
-  }
-
   push(); //linea tempo
 
   stroke("#ffffffff");
@@ -436,22 +399,125 @@ function draw() {
 
   pop();
 
-  push(); //anni riga tempo
+  push(); //last known eruption
 
+  fill("#ffffffff");
+  noStroke();
+  textAlign(CENTER);
+  textStyle(BOLD);
+  textSize(20);
+  text("Last known eruption", windowWidth / 2 - 320, windowHeight / 2 + 280);
+
+  pop();
+
+  //linea temporale
+  let showUnknown = false;
+  let eruptionX = null;
+  let xOffset = null;
+  let labelText = ""; //x semplificare stampa etichetta gialla
+
+  if (lastEruptionCode) {
+    if (lastEruptionCode === "U") {
+      showUnknown = true;
+    } else if (lastEruptionCode.startsWith("D")) {
+      //mappa valori tabella dati sotto colonna last known eruption (D1-D7) a coordinata X linea temporale
+      const segment = parseInt(lastEruptionCode.substring(1));
+
+      switch (segment) {
+        case 7:
+          xOffset = -200;
+          labelText = "D7 \n(b.C.)";
+          break;
+        case 6:
+          xOffset = -100;
+          labelText = "D6 \n(1 - 1499)";
+          break;
+        case 5:
+          xOffset = 0;
+          labelText = "D5 \n(1500 - 1699)";
+          break;
+        case 4:
+          xOffset = 100;
+          labelText = "D4 \n(1700 - 1799)";
+          break;
+        case 3:
+          xOffset = 200;
+          labelText = "D3 \n(1800 - 1899)";
+          break;
+        case 2:
+          xOffset = 300;
+          labelText = "D2 \n(1900 - 1963)";
+          break;
+        case 1:
+          xOffset = 400;
+          labelText = "D1 \n(1964 - 2025)";
+          break;
+        default:
+          xOffset = null;
+      }
+
+      if (xOffset !== null) {
+        eruptionX = windowWidth / 2 + xOffset;
+      }
+    }
+  }
+
+  //anni bianchi linea temporale
+  //se si conosce anno ultima eruzione, salta disegno sua etichetta bianca
+  push(); 
   fill("#ffffffff");
   noStroke();
   textAlign(CENTER);
   textStyle(NORMAL);
   textSize(14);
-  text("D7 \n(b.C.)", windowWidth / 2 - 200, windowHeight / 2 + 310); // \n x andare a capo nella stessa stringa
-  text("D6 \n(1 - 1499)", windowWidth / 2 - 100, windowHeight / 2 + 310);
-  text("D5 \n(1500 - 1699)", windowWidth / 2, windowHeight / 2 + 310);
-  text("D4 \n(1700 - 1799)", windowWidth / 2 + 100, windowHeight / 2 + 310);
-  text("D3 \n(1800 - 1899)", windowWidth / 2 + 200, windowHeight / 2 + 310);
-  text("D2 \n(1900 - 1963)", windowWidth / 2 + 300, windowHeight / 2 + 310);
-  text("D4 \n(1964 - 2025)", windowWidth / 2 + 400, windowHeight / 2 + 310);
+    
+  if (xOffset !== -200) text("D7 \n(b.C.)", windowWidth / 2 - 200, windowHeight / 2 + 310); 
+  if (xOffset !== -100) text("D6 \n(1 - 1499)", windowWidth / 2 - 100, windowHeight / 2 + 310);
+  if (xOffset !== 0) text("D5 \n(1500 - 1699)", windowWidth / 2, windowHeight / 2 + 310);
+  if (xOffset !== 100) text("D4 \n(1700 - 1799)", windowWidth / 2 + 100, windowHeight / 2 + 310);
+  if (xOffset !== 200) text("D3 \n(1800 - 1899)", windowWidth / 2 + 200, windowHeight / 2 + 310);
+  if (xOffset !== 300) text("D2 \n(1900 - 1963)", windowWidth / 2 + 300, windowHeight / 2 + 310);
+  if (xOffset !== 400) text("D1 \n(1964 - 2025)", windowWidth / 2 + 400, windowHeight / 2 + 310);
 
   pop();
+  
+  //linea verticale gialla
+  if (eruptionX !== null) {
+    push();
+
+    stroke("#fffb00ff");
+    strokeWeight(8);
+    line(eruptionX, windowHeight / 2 + 285, eruptionX, windowHeight / 2 + 265);
+
+    pop();
+    
+    //anno giallo
+    push(); 
+    fill("#fffb00ff"); 
+    noStroke();
+    textAlign(CENTER);
+    textStyle(BOLD); 
+    textSize(14);
+    text(labelText, windowWidth / 2 + xOffset, windowHeight / 2 + 310);
+    pop();
+  }
+
+  //disegna "Unknown" se è valore vulcano scelto
+  if (showUnknown) {
+    push(); //unknown
+
+    fill("#fffb00ff");
+    noStroke();
+    textAlign(CENTER);
+    textStyle(BOLD);
+    textSize(14);
+    text("Unknown", windowWidth / 2 - 320, windowHeight / 2 + 310);
+
+    pop();
+  }
+  //altrimenti (se è data nota D1-D7), "Unknown" non compare
+  else {
+  }
 }
 
 function setLineDash(list) {

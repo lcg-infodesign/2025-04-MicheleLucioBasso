@@ -107,7 +107,7 @@ function calculateMapDimensions() {
   //calcola altezza necessaria in base a numero categorie
   const lineHeight = 18;
   const numCategories = Object.keys(categoryColors).length;
-  // Altezza: 10px(margine sup) + Title (16px) + 18px(spazio) + Legend (10px) + 18px(spazio) + righe Categorie (numCategories * lineHeight) + 10px(margine inf)
+  //altezza: 10px(margine sup) + Title (16px) + 18px(spazio) + Legend (10px) + 18px(spazio) + righe Categorie (numCategories * lineHeight) + 10px(margine inf)
   legendCategoryHeight = (3 + numCategories) * lineHeight + 40; //x stimare l'altezza: 3 righe fisse + righe variabili + margine extra (40px)
 }
 
@@ -130,7 +130,7 @@ function draw() {
     const name = row.getString("Volcano Name");
     const country = row.getString("Country");
     const type = row.getString("Type");
-    const typeCategory = row.getString("TypeCategory"); // Legge la Type Category
+    const typeCategory = row.getString("TypeCategory");
     const status = row.getString("Status");
     const lastEruption = row.getString("Last Known Eruption");
 
@@ -184,6 +184,8 @@ function draw() {
         typeCategory: typeCategory,
         status: status,
         lastEruption: lastEruption,
+        lat: row.getString("Latitude"),
+        lon: row.getString("Longitude"),
       };
 
       cursor("pointer"); //cambia icona mouse in indice alzato
@@ -194,7 +196,7 @@ function draw() {
     ellipse(x, y, volcano_radius, volcano_radius);
   }
 
-  drawUIElements(); //diesegno titolo ed legenda elevation
+  drawUIElements(); //disegno titolo e legenda elevation
 
   drawTypeCategoryLegend();
 
@@ -488,6 +490,9 @@ function mouseClicked() {
   //controlla se click avvenuto su un vulcano, reindirizza a detail.js
   else if (hoveredVolcano) {
     const volcanoName = encodeURIComponent(hoveredVolcano.name); //codifica nome per sicurezza nell'URL
-    window.location.href = 'detail.html?volcano=' + volcanoName; //reindirizza a pagina di dettaglio in stessa scheda, attraverso URL di destinazione con parametro 'volcano'
+    const lat = encodeURIComponent(hoveredVolcano.lat); //codifica Latitudine
+    const lon = encodeURIComponent(hoveredVolcano.lon); //codifica Longitudine
+
+    window.location.href = `detail.html?volcano=${volcanoName}&lat=${lat}&lon=${lon}`; //reindirizza a pagina di dettaglio in stessa scheda, attraverso URL di destinazione con parametro 'volcano'
   }
 }
